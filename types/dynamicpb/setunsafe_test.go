@@ -93,6 +93,45 @@ func TestSetUnsafeMatchesSet(t *testing.T) {
 	}
 }
 
+// TestMapSetUnsafeRoundTrips populates a map<int32, int32> via the
+// fast path, marshals, decodes through generated code, and verifies
+// all entries.
+func TestMapSetUnsafeRoundTrips(t *testing.T) {
+	desc := (&testpb.TestAllTypes{}).ProtoReflect().Descriptor()
+	fd := desc.Fields().ByName("map_int32_int32")
+	if fd == nil {
+		t.Skip("test descriptor missing map_int32_int32")
+	}
+	m := dynamicpb.NewMessage(desc)
+	mapValue := m.Mutable(fd).Map()
+	u, ok := mapValue.(interface {
+		SetUnsafe(protoreflect.MapKey, protoreflect.Value)
+	})
+	if !ok {
+		t.Fatalf("dynamicMap does not expose SetUnsafe")
+	}
+	want := map[int32]int32{1: 10, 2: 20, 3: 30}
+	for k, v := range want {
+		u.SetUnsafe(protoreflect.ValueOfInt32(k).MapKey(), protoreflect.ValueOfInt32(v))
+	}
+	wire, err := proto.Marshal(m)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var got testpb.TestAllTypes
+	if err := proto.Unmarshal(wire, &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(got.GetMapInt32Int32()) != len(want) {
+		t.Fatalf("map size: got %v, want %v", got.GetMapInt32Int32(), want)
+	}
+	for k, v := range want {
+		if got.GetMapInt32Int32()[k] != v {
+			t.Errorf("entry %d: got %d, want %d", k, got.GetMapInt32Int32()[k], v)
+		}
+	}
+}
+
 // TestSetUnsafeOneofClearsOthers ensures the oneof-fixup is still run
 // (only the typecheck is skipped).
 func TestSetUnsafeOneofClearsOthers(t *testing.T) {

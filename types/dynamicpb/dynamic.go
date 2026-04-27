@@ -506,6 +506,25 @@ func (x *dynamicMap) Set(k protoreflect.MapKey, v protoreflect.Value) {
 	typecheckSingular(x.desc.MapValue(), v)
 	x.mapv[k.Interface()] = v
 }
+
+// SetUnsafe is a faster equivalent of [Set] that skips the runtime
+// typechecks of k and v against the map's key/value kinds. The caller
+// MUST ensure k was constructed via the matching MapKeyOf* constructor
+// and v via the matching ValueOf* constructor.
+//
+// Like [Message.SetUnsafe] and [dynamicList.AppendUnsafe], reach it via
+// an interface assertion since dynamicMap is unexported:
+//
+//	if u, ok := m.(interface {
+//	    SetUnsafe(protoreflect.MapKey, protoreflect.Value)
+//	}); ok {
+//	    u.SetUnsafe(k, v)
+//	} else {
+//	    m.Set(k, v)
+//	}
+func (x *dynamicMap) SetUnsafe(k protoreflect.MapKey, v protoreflect.Value) {
+	x.mapv[k.Interface()] = v
+}
 func (x *dynamicMap) Has(k protoreflect.MapKey) bool { return x.Get(k).IsValid() }
 func (x *dynamicMap) Clear(k protoreflect.MapKey)    { delete(x.mapv, k.Interface()) }
 func (x *dynamicMap) Mutable(k protoreflect.MapKey) protoreflect.Value {
