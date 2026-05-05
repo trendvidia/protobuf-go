@@ -56,4 +56,13 @@ The codebase separates into four layers:
 
 - **Module path:** `google.golang.org/protobuf`
 - **Minimum Go version:** 1.23
-- **Upstream source of truth:** `go.googlesource.com/protobuf` (Gerrit, not GitHub PRs)
+- **Upstream source of truth:** `go.googlesource.com/protobuf` (Gerrit, not GitHub PRs); GitHub mirror at `protocolbuffers/protobuf-go`.
+
+## Fork branching model
+
+This is a soft fork of upstream `protocolbuffers/protobuf-go`. Branches:
+
+- **`master`** — kept aligned with upstream `master` (no local changes). Sync via `git fetch upstream && git push origin upstream/master:master`.
+- **`trendvidia`** — default branch on GitHub. Holds our patches on top of `master`. To pick up new upstream releases, rebase: `git checkout trendvidia && git rebase upstream/master` then force-push.
+
+New work targeting our fork goes on `trendvidia` (or branches off it). Do not commit fork-specific changes to `master`.
