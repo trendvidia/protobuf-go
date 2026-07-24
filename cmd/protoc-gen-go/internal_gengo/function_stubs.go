@@ -80,13 +80,13 @@ func genFunctionStubs(g *protogen.GeneratedFile, f *fileInfo) {
 	g.P()
 
 	g.P("// UnimplementedFunctions is a placeholder implementation of Functions whose")
-	g.P("// methods all fail with a Violation coded \"unimplemented\", per RFC-001 §9.2's")
-	g.P("// lenient registration model.")
+	g.P("// methods all fail with the reserved ", protocheckPackage.Ident("CodeFunctionUnimplemented"), " violation")
+	g.P("// (RFC-001 §7), per RFC-001 §9.2's lenient registration model.")
 	g.P("type UnimplementedFunctions struct{}")
 	g.P()
 	for i, d := range decls {
 		g.P("func (UnimplementedFunctions) ", methods[i], "(", functionParamSignature(d, aliases, false), ") (bool, *", violationIdent, ") {")
-		g.P("return false, &", violationIdent, "{Code: \"unimplemented\", FallbackMessage: ", strconv.Quote(d.Name+": not implemented"), "}")
+		g.P("return false, &", violationIdent, "{Code: ", protocheckPackage.Ident("CodeFunctionUnimplemented"), ", FallbackMessage: ", protocheckPackage.Ident("MsgFunctionUnimplemented"), "(", strconv.Quote(d.Name), ")}")
 		g.P("}")
 		g.P()
 	}
@@ -101,7 +101,7 @@ func genFunctionStubs(g *protogen.GeneratedFile, f *fileInfo) {
 	for i, d := range decls {
 		g.P("if err := eng.Register(", strconv.Quote(d.Name), ", func(args []any) (bool, *", violationIdent, ") {")
 		g.P("if len(args) != ", len(d.Params), " {")
-		g.P("return false, &", violationIdent, "{Code: \"function.invalid_argument\", FallbackMessage: ", strconv.Quote(fmt.Sprintf("%s: expected %d argument(s)", d.Name, len(d.Params))), "}")
+		g.P("return false, &", violationIdent, "{Code: ", protocheckPackage.Ident("CodeFunctionInvalidArgument"), ", FallbackMessage: ", protocheckPackage.Ident("MsgFunctionArity"), "(", strconv.Quote(d.Name), ", ", len(d.Params), ")}")
 		g.P("}")
 		var callArgs []string
 		for j, p := range d.Params {
@@ -110,9 +110,12 @@ func genFunctionStubs(g *protogen.GeneratedFile, f *fileInfo) {
 				callArgs = append(callArgs, fmt.Sprintf("args[%d]", j))
 				continue
 			}
+			// The guard asserts the resolved Go type, but the message names
+			// the parameter type as declared in the schema (RFC-001 §7's
+			// MsgFunctionArgType contract) — never the host-language type.
 			g.P("a", j, ", ok := args[", j, "].(", goType, ")")
 			g.P("if !ok {")
-			g.P("return false, &", violationIdent, "{Code: \"function.invalid_argument\", FallbackMessage: ", strconv.Quote(fmt.Sprintf("%s: argument %d is not %s", d.Name, j, goType)), "}")
+			g.P("return false, &", violationIdent, "{Code: ", protocheckPackage.Ident("CodeFunctionInvalidArgument"), ", FallbackMessage: ", protocheckPackage.Ident("MsgFunctionArgType"), "(", strconv.Quote(d.Name), ", ", j, ", ", strconv.Quote(p.Type), ")}")
 			g.P("}")
 			callArgs = append(callArgs, fmt.Sprintf("a%d", j))
 		}

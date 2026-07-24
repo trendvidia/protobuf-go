@@ -357,23 +357,26 @@ func (a schemaAnnotation) stringArg(name string) (string, bool) {
 	return "", false
 }
 
-// annotationsDescription returns the text of the first @description
-// annotation.
+// annotationsDescription returns the text of the last @description
+// annotation. Carrier lists are ordered base-to-derived (type-alias
+// expansions precede the use site's own annotations), so the last match is
+// the most specific description for the declaration being documented.
 func annotationsDescription(anns []schemaAnnotation) (string, bool) {
-	for _, a := range anns {
-		if a.Name == schemaDescriptionAnnotation {
-			return a.stringArg("text")
+	for i := len(anns) - 1; i >= 0; i-- {
+		if anns[i].Name == schemaDescriptionAnnotation {
+			return anns[i].stringArg("text")
 		}
 	}
 	return "", false
 }
 
 // annotationsDeprecated reports whether an @deprecated annotation is
-// present, and its (possibly empty) reason.
+// present, and its (possibly empty) reason — like annotationsDescription,
+// preferring the most-derived match.
 func annotationsDeprecated(anns []schemaAnnotation) (string, bool) {
-	for _, a := range anns {
-		if a.Name == schemaDeprecatedAnnotation {
-			reason, _ := a.stringArg("reason")
+	for i := len(anns) - 1; i >= 0; i-- {
+		if anns[i].Name == schemaDeprecatedAnnotation {
+			reason, _ := anns[i].stringArg("reason")
 			return reason, true
 		}
 	}
