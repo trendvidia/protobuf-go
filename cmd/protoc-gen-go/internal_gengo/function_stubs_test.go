@@ -135,14 +135,20 @@ func TestGenFunctionStubs(t *testing.T) {
 		// Bracket-form options surface as doc comments.
 		"// reports whether value is an RFC 5321 address",
 		"// Deprecated: use is_email",
-		// UnimplementedFunctions placeholder.
+		// UnimplementedFunctions placeholder fails with the reserved
+		// RFC-001 §7 code and spec-pinned fallback message, both referenced
+		// through the runtime's typed constants and template helpers.
 		"type UnimplementedFunctions struct{}",
-		`{Code: "unimplemented", FallbackMessage: "fixtures.basic.is_email: not implemented"}`,
+		`{Code: v2.CodeFunctionUnimplemented, FallbackMessage: v2.MsgFunctionUnimplemented("fixtures.basic.is_email")}`,
 		"var _ Functions = UnimplementedFunctions{}",
 		// Registration helper with []any adapters.
 		"func RegisterFunctions(eng v2.Engine, impl Functions) error {",
 		`if err := eng.Register("fixtures.basic.is_email", func(args []any) (bool, *v2.Violation) {`,
+		`{Code: v2.CodeFunctionInvalidArgument, FallbackMessage: v2.MsgFunctionArity("fixtures.basic.is_email", 1)}`,
 		"a0, ok := args[0].(string)",
+		// The arg-type guard message names the schema-declared parameter
+		// type (the alias FQN), not the resolved Go type it asserts.
+		`{Code: v2.CodeFunctionInvalidArgument, FallbackMessage: v2.MsgFunctionArgType("fixtures.basic.is_valid", 0, "fixtures.basic.Email")}`,
 		"return impl.IsValid(a0, a1)",
 		// Engine SPI import.
 		`v2 "github.com/trendvidia/protocheck/v2"`,
