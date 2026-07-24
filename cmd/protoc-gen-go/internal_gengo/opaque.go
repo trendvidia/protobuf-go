@@ -29,6 +29,7 @@ func opaqueGenMessage(g *protogen.GeneratedFile, f *fileInfo, message *messageIn
 	leadingComments := appendDeprecationSuffix(message.Comments.Leading,
 		message.Desc.ParentFile(),
 		message.Desc.Options().(*descriptorpb.MessageOptions).GetDeprecated())
+	leadingComments = appendSchemaAnnotationComments(leadingComments, message.Desc.Options())
 	g.P(leadingComments,
 		"type ", message.GoIdent, " struct {")
 
@@ -131,6 +132,7 @@ func opaqueGenMessageField(g *protogen.GeneratedFile, f *fileInfo, message *mess
 		leadingComments := appendDeprecationSuffix(field.Comments.Leading,
 			field.Desc.ParentFile(),
 			field.Desc.Options().(*descriptorpb.FieldOptions).GetDeprecated())
+		leadingComments = appendSchemaAnnotationComments(leadingComments, field.Desc.Options())
 		g.P(leadingComments,
 			name, " ", goType, tags,
 			trailingComment(field.Comments.Trailing))
@@ -302,6 +304,7 @@ func opaqueGenGet(g *protogen.GeneratedFile, f *fileInfo, message *messageInfo, 
 	leadingComments := appendDeprecationSuffix("",
 		field.Desc.ParentFile(),
 		field.Desc.Options().(*descriptorpb.FieldOptions).GetDeprecated())
+	leadingComments = appendSchemaAnnotationComments(leadingComments, field.Desc.Options())
 	fieldtrackNoInterface(g, message.isTracked)
 	g.AnnotateSymbol(message.GoIdent.GoName+"."+getterName, protogen.Annotation{Location: field.Location})
 
