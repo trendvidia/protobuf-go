@@ -20,7 +20,7 @@ import (
 var protocheckPackage goImportPath = protogen.GoImportPath("github.com/trendvidia/protocheck/v2")
 
 // genFunctionStubs generates the RFC-001 §9.3 stubs for the `function`
-// declarations carried in the file's options (extension 50401): a Functions
+// declarations carried in the file's options (extension 1328): a Functions
 // interface, an UnimplementedFunctions placeholder, and a RegisterFunctions
 // helper binding implementations to a validation engine by fully-qualified
 // name. Files without function declarations generate nothing.

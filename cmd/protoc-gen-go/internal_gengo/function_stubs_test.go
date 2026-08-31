@@ -44,7 +44,7 @@ func generate(t *testing.T, fdp *descriptorpb.FileDescriptorProto) string {
 
 // basicFileDescriptor mirrors protowire's
 // testdata/schema-extensions/01_basic.proto after lowering: the v1.2
-// constructs are carried as extensions 50400/50401/50403 in the options,
+// constructs are carried as extensions 1327/1328/1330 in the options,
 // exactly as the protocompile lowering pass embeds them.
 func basicFileDescriptor(t *testing.T) *descriptorpb.FileDescriptorProto {
 	t.Helper()
