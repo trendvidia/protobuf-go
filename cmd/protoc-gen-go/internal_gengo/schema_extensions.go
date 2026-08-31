@@ -16,19 +16,23 @@ import (
 )
 
 // This file reads the RFC-001 schema-extension carriers out of descriptor
-// options. The carriers are extensions in protowire's reserved 50400–50404
-// range, defined in protowire's proto/schema/v1/descriptor.proto. They are
+// options. The carriers are extensions in protowire's registered 1327–1331
+// range, defined in protowire's proto/schema/v1/descriptor.proto. Those
+// numbers live inside the 1314–1363 block the Protocol Buffers global
+// extension registry granted protowire (protocolbuffers/protobuf#28919);
+// they previously sat at 50400–50404, an unregistered range, which is
+// retired and must never be reused. They are
 // decoded from unknown fields to avoid a dependency on the schema/v1 Go
 // module (the same approach as isTrackedMessage in init.go).
 
 // Carrier extension field numbers (proto/schema/v1/descriptor.proto).
 const (
 	// AnnotationList; shared across every Options message kind.
-	schemaAnnotationsFieldNumber = 50400
+	schemaAnnotationsFieldNumber = 1327
 	// FileFunctions; FileOptions only.
-	schemaFunctionsFieldNumber = 50401
+	schemaFunctionsFieldNumber = 1328
 	// FileTypeDecls; FileOptions only.
-	schemaTypeDeclsFieldNumber = 50403
+	schemaTypeDeclsFieldNumber = 1330
 )
 
 // Fully-qualified names of the built-in annotations from
@@ -82,7 +86,7 @@ type schemaFunctionParam struct {
 	Type string // FQN: primitive, enum, message, or type alias
 }
 
-// readAnnotations decodes the AnnotationList carrier (field 50400) from the
+// readAnnotations decodes the AnnotationList carrier (field 1327) from the
 // unknown fields of any Options message. Multiple carrier occurrences are
 // concatenated per proto merge semantics.
 func readAnnotations(opts proto.Message) []schemaAnnotation {
@@ -93,7 +97,7 @@ func readAnnotations(opts proto.Message) []schemaAnnotation {
 	return anns
 }
 
-// fileFunctions decodes the FileFunctions carrier (field 50401) from the
+// fileFunctions decodes the FileFunctions carrier (field 1328) from the
 // file's options.
 func fileFunctions(f *fileInfo) []schemaFunctionDecl {
 	var decls []schemaFunctionDecl
@@ -104,7 +108,7 @@ func fileFunctions(f *fileInfo) []schemaFunctionDecl {
 	return decls
 }
 
-// fileTypeAliases decodes the FileTypeDecls carrier (field 50403) into a
+// fileTypeAliases decodes the FileTypeDecls carrier (field 1330) into a
 // alias-name → base-type-FQN map, used to resolve function parameter types
 // declared as same-file type aliases.
 func fileTypeAliases(f *fileInfo) map[string]string {
