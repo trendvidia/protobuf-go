@@ -1,5 +1,11 @@
 # Go support for Protocol Buffers
 
+> [!NOTE]
+> **This is Trendvidia's fork of
+> [protocolbuffers/protobuf-go](https://github.com/protocolbuffers/protobuf-go).**
+> It is optional: nothing should need it to compile.
+> See [About this fork](#about-this-fork).
+
 [![Go Reference](https://pkg.go.dev/badge/google.golang.org/protobuf.svg)](https://pkg.go.dev/google.golang.org/protobuf)
 [![Build Status](https://travis-ci.org/protocolbuffers/protobuf-go.svg?branch=master)](https://travis-ci.org/protocolbuffers/protobuf-go)
 
@@ -43,6 +49,83 @@ implemented by the
 module. The first major version is implemented by the
 [`github.com/golang/protobuf`](https://pkg.go.dev/mod/github.com/golang/protobuf)
 module.
+
+## About this fork
+
+The fork exists to make dynamic-message decoding faster. It adds three methods
+to `types/dynamicpb`, and upstream has no equivalent:
+
+*   `SetUnsafe` on `*dynamicpb.Message`
+*   `AppendUnsafe` on the list type
+*   `SetUnsafe` on the map type
+
+They store a value without the per-field type check and the boxing allocation
+that comes with it. [protowire-go](https://github.com/trendvidia/protowire-go)
+finds them through a runtime type assertion. A binary built with the fork
+decodes faster, and a binary built with upstream takes the standard path and
+behaves the same.
+
+Measured on 2026-10-30 at 6 runs each, comparing fork v1.36.15 with upstream
+v1.36.12, on protowire-go's dynamic-message benchmarks:
+
+| Benchmark                                       | Time   | Allocations    |
+|-------------------------------------------------|--------|----------------|
+| `pxf` `BenchmarkPXFUnmarshal`                   | -7.7%  | 114 to 88      |
+| `pxf` `BenchmarkPXFUnmarshalFullElements/plain` | -6.6%  | 13694 to 10950 |
+| `sbe` `BenchmarkSBEUnmarshal`                   | -24.4% | 40 to 25       |
+
+These are small benchmarks. They show the path works, not what a real workload
+gains. The fork will be dropped if real workloads show no need for it.
+
+### Opting in
+
+Only a binary opts in, with a `replace` in its own `go.mod`. A `replace` has no
+effect on the modules that depend on yours, so a library should leave this
+choice to the binary at the top of the tree.
+
+```
+replace google.golang.org/protobuf => github.com/trendvidia/protobuf-go v1.36.15
+```
+
+The fork keeps the module path `google.golang.org/protobuf`, so `replace` is
+the only way to reach it. Confirm that it took effect:
+
+```
+$ go list -m google.golang.org/protobuf
+google.golang.org/protobuf v1.36.12 => github.com/trendvidia/protobuf-go v1.36.15
+```
+
+### Who opts in
+
+No binary has chosen the fork for its speed yet. These still have a `replace`,
+for other reasons, as of 2026-10-30:
+
+| Module                         | Why it has the `replace`                                        | When it goes                                                              |
+|--------------------------------|-----------------------------------------------------------------|---------------------------------------------------------------------------|
+| protolsp                       | Uses the namespaced registry directly                           | [protoregistry#44](https://github.com/trendvidia/protoregistry/issues/44) |
+| golias, goed                   | Use `protoregistry/client`, which needs the namespaced registry | [protoregistry#44](https://github.com/trendvidia/protoregistry/issues/44) |
+| gameflow                       | No stated reason, and nothing uses a fork-only API              | [gameflow#957](https://github.com/trendvidia/gameflow/pull/957)           |
+| protowire `internal/schemaext` | Test harness that builds this fork's `protoc-gen-go`            | [protowire#458](https://github.com/trendvidia/protowire/issues/458)       |
+
+A binary that opts in for speed gets added here, with the reason.
+
+### What is leaving
+
+Two other additions are here only until their replacements ship:
+
+*   The namespaced registry, `reflect/protoregistry/namespace.go`, moves to
+    [protoregistry](https://github.com/trendvidia/protoregistry/issues/44).
+*   The RFC-001 function stubs and annotation comments in `protoc-gen-go` move
+    to [a separate plugin](https://github.com/trendvidia/protowire/issues/458).
+
+### Version tags
+
+Tag `v1.36.12` names different code here (`3e10defe`) and upstream
+(`cdd4c5f7`), and `v1.36.13` to `v1.36.15` exist only here. New tags carry a suffix, such as `v1.36.12-tv.1`, so
+`go.mod` shows that a build uses the fork. Existing tags stay because they are
+in use.
+
+The `trendvidia` branch holds the fork. `master` tracks upstream.
 
 ## Package index
 
