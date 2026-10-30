@@ -165,7 +165,7 @@ func opaqueGenOneofFields(g *protogen.GeneratedFile, f *fileInfo, message *messa
 		return
 	}
 
-	leadingComments := oneof.Comments.Leading
+	leadingComments := appendSchemaAnnotationComments(oneof.Comments.Leading, oneof.Desc.Options())
 	if leadingComments != "" {
 		leadingComments += "\n"
 	}
@@ -877,8 +877,8 @@ func opaqueGenMessageBuilder(g *protogen.GeneratedFile, f *fileInfo, message *me
 			tag = "`go:\"track\"`"
 		}
 		if oneof != nil && oneof.Fields[0] == field && !oneof.Desc.IsSynthetic() {
-			if oneof.Comments.Leading != "" {
-				g.P(oneof.Comments.Leading)
+			if comments := appendSchemaAnnotationComments(oneof.Comments.Leading, oneof.Desc.Options()); comments != "" {
+				g.P(comments)
 				g.P()
 			}
 			g.P("// Fields of oneof ", opaqueOneofFieldName(oneof, message.isOpaque()), ":")

@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/gofeaturespb"
 	"google.golang.org/protobuf/types/pluginpb"
 )
 
@@ -187,6 +188,51 @@ func TestAnnotationDocComments(t *testing.T) {
 	}
 	if t.Failed() {
 		t.Logf("generated output:\n%s", content)
+	}
+}
+
+// TestOneofAnnotationDocComments covers the two places a oneof's comments are
+// emitted: the struct field, which an opaque struct hides, and the builder.
+func TestOneofAnnotationDocComments(t *testing.T) {
+	fdp := basicFileDescriptor(t)
+	oneofOpts := &descriptorpb.OneofOptions{}
+	oneofOpts.ProtoReflect().SetUnknown(protoreflect.RawFields(
+		appendBytesField(nil, schemaAnnotationsFieldNumber, encodeAnnotationList(
+			encodeAnnotation(schemaDescriptionAnnotation, encodeStringArg("", "how to reach the user")),
+			encodeAnnotation(schemaDeprecatedAnnotation, encodeStringArg("", "use channels")),
+		))))
+	msg := fdp.MessageType[0]
+	msg.OneofDecl = []*descriptorpb.OneofDescriptorProto{{Name: proto.String("contact"), Options: oneofOpts}}
+	msg.Field[0].OneofIndex = proto.Int32(0)
+
+	// want counts the sites in the first generated file: the open struct and
+	// the builder, of which an opaque struct has only the builder.
+	for _, tt := range []struct {
+		level gofeaturespb.GoFeatures_APILevel
+		want  int
+	}{
+		{gofeaturespb.GoFeatures_API_OPEN, 1},
+		{gofeaturespb.GoFeatures_API_HYBRID, 2},
+		{gofeaturespb.GoFeatures_API_OPAQUE, 1},
+	} {
+		t.Run(tt.level.String(), func(t *testing.T) {
+			gen, err := protogen.Options{DefaultAPILevel: tt.level}.New(&pluginpb.CodeGeneratorRequest{
+				FileToGenerate: []string{fdp.GetName()},
+				ProtoFile:      []*descriptorpb.FileDescriptorProto{fdp},
+			})
+			if err != nil {
+				t.Fatalf("protogen.Options.New: %v", err)
+			}
+			content, err := GenerateFile(gen, gen.FilesByPath[fdp.GetName()]).Content()
+			if err != nil {
+				t.Fatalf("generated file does not compile to valid Go: %v", err)
+			}
+			for _, text := range []string{"// how to reach the user", "// Deprecated: use channels"} {
+				if got := strings.Count(string(content), text); got != tt.want {
+					t.Errorf("%q appears %d times, want %d\n%s", text, got, tt.want, content)
+				}
+			}
+		})
 	}
 }
 
