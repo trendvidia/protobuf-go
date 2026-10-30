@@ -6,6 +6,7 @@ package internal_gengo
 
 import (
 	"fmt"
+	"path"
 	"strconv"
 	"strings"
 
@@ -25,12 +26,7 @@ var protocheckPackage goImportPath = protogen.GoImportPath("github.com/trendvidi
 // helper binding implementations to a validation engine by fully-qualified
 // name. Files without function declarations generate nothing.
 func genFunctionStubs(g *protogen.GeneratedFile, f *fileInfo) {
-	var decls []schemaFunctionDecl
-	for _, d := range fileFunctions(f) {
-		if d.Name != "" {
-			decls = append(decls, d)
-		}
-	}
+	decls := functionStubDecls(f.File)
 	if len(decls) == 0 {
 		return
 	}
@@ -127,6 +123,45 @@ func genFunctionStubs(g *protogen.GeneratedFile, f *fileInfo) {
 	g.P("return nil")
 	g.P("}")
 	g.P()
+}
+
+// functionStubDecls returns the function declarations of f that get stubs.
+func functionStubDecls(f *protogen.File) []schemaFunctionDecl {
+	var decls []schemaFunctionDecl
+	for _, d := range fileFunctions(f) {
+		if d.Name != "" {
+			decls = append(decls, d)
+		}
+	}
+	return decls
+}
+
+// checkFunctionStubConflict reports a plugin error if another file known to
+// this run generates function stubs into the same Go package as file. The
+// three stub names are fixed, so a second file would redeclare them, and a
+// plugin error naming both files beats a compile error in generated code.
+//
+// Files in the same import path but different output directories are separate
+// Go packages on disk (paths=source_relative), so they do not conflict. A
+// sibling that is neither generated in this run nor imported by a file that is
+// remains invisible here and still fails at compile time.
+func checkFunctionStubConflict(gen *protogen.Plugin, file *protogen.File) {
+	if len(functionStubDecls(file)) == 0 {
+		return
+	}
+	dir := path.Dir(file.GeneratedFilenamePrefix)
+	for _, other := range gen.Files {
+		if other == file || other.GoImportPath != file.GoImportPath || path.Dir(other.GeneratedFilenamePrefix) != dir {
+			continue
+		}
+		if len(functionStubDecls(other)) > 0 {
+			gen.Error(fmt.Errorf("%s and %s both declare functions and generate into Go package %s: "+
+				"the RFC-001 §9.3 stubs Functions, UnimplementedFunctions and RegisterFunctions "+
+				"can only be generated once per Go package, so declare these functions in one file",
+				file.Desc.Path(), other.Desc.Path(), file.GoImportPath))
+			return
+		}
+	}
 }
 
 // functionParamSignature renders the Go parameter list for a function

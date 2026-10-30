@@ -89,6 +89,7 @@ func GenerateFile(gen *protogen.Plugin, file *protogen.File) *protogen.Generated
 }
 
 func generateFiles(gen *protogen.Plugin, file *protogen.File) []*protogen.GeneratedFile {
+	checkFunctionStubConflict(gen, file)
 	f := newFileInfo(file)
 	generated := []*protogen.GeneratedFile{
 		generateOneFile(gen, file, f, ""),
