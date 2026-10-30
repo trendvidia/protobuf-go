@@ -99,7 +99,7 @@ func readAnnotations(opts proto.Message) []schemaAnnotation {
 
 // fileFunctions decodes the FileFunctions carrier (field 1328) from the
 // file's options.
-func fileFunctions(f *fileInfo) []schemaFunctionDecl {
+func fileFunctions(f *protogen.File) []schemaFunctionDecl {
 	var decls []schemaFunctionDecl
 	opts := f.Desc.Options().(*descriptorpb.FileOptions)
 	forEachMessageField(opts.ProtoReflect().GetUnknown(), schemaFunctionsFieldNumber, func(v []byte) {

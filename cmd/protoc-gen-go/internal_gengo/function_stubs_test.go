@@ -127,22 +127,22 @@ func TestGenFunctionStubs(t *testing.T) {
 	content := generate(t, basicFileDescriptor(t))
 
 	for _, want := range []string{
-		// Functions interface with typed signatures; the type alias
+		// BasicFunctions interface with typed signatures; the type alias
 		// fixtures.basic.Email resolves through FileTypeDecls to string.
-		"type Functions interface {",
+		"type BasicFunctions interface {",
 		"IsEmail(value string) (bool, *v2.Violation)",
 		"IsValid(addr string, strict bool) (bool, *v2.Violation)",
 		// Bracket-form options surface as doc comments.
 		"// reports whether value is an RFC 5321 address",
 		"// Deprecated: use is_email",
-		// UnimplementedFunctions placeholder fails with the reserved
+		// UnimplementedBasicFunctions placeholder fails with the reserved
 		// RFC-001 §7 code and spec-pinned fallback message, both referenced
 		// through the runtime's typed constants and template helpers.
-		"type UnimplementedFunctions struct{}",
+		"type UnimplementedBasicFunctions struct{}",
 		`{Code: v2.CodeFunctionUnimplemented, FallbackMessage: v2.MsgFunctionUnimplemented("fixtures.basic.is_email")}`,
-		"var _ Functions = UnimplementedFunctions{}",
+		"var _ BasicFunctions = UnimplementedBasicFunctions{}",
 		// Registration helper with []any adapters.
-		"func RegisterFunctions(eng v2.Engine, impl Functions) error {",
+		"func RegisterBasicFunctions(eng v2.Engine, impl BasicFunctions) error {",
 		`if err := eng.Register("fixtures.basic.is_email", func(args []any) (bool, *v2.Violation) {`,
 		`{Code: v2.CodeFunctionInvalidArgument, FallbackMessage: v2.MsgFunctionArity("fixtures.basic.is_email", 1)}`,
 		"a0, ok := args[0].(string)",
@@ -207,5 +207,156 @@ func TestNoSchemaExtensionsNoOverhead(t *testing.T) {
 		if strings.Contains(content, banned) {
 			t.Errorf("output for carrier-free file unexpectedly contains %q", banned)
 		}
+	}
+}
+
+// functionFile returns a file in package example.com/fixtures/sharedpb. It
+// declares the named function, or no function when fn is empty.
+func functionFile(name, fn string, deps ...string) *descriptorpb.FileDescriptorProto {
+	opts := &descriptorpb.FileOptions{GoPackage: proto.String("example.com/fixtures/sharedpb")}
+	if fn != "" {
+		opts.ProtoReflect().SetUnknown(protoreflect.RawFields(appendBytesField(nil, schemaFunctionsFieldNumber,
+			encodeFileFunctions(encodeFunctionDecl("fixtures.shared."+fn, nil, nil)))))
+	}
+	return &descriptorpb.FileDescriptorProto{
+		Name:       proto.String(name),
+		Package:    proto.String("fixtures.shared"),
+		Syntax:     proto.String("proto3"),
+		Dependency: deps,
+		Options:    opts,
+	}
+}
+
+// TestFunctionStubsPerFile pins the fix for protobuf-go#9: two files in one Go
+// package each get their own stub names, and neither set depends on the other
+// file being in the run.
+func TestFunctionStubsPerFile(t *testing.T) {
+	a, b := functionFile("fixtures/common.proto", "first"), functionFile("fixtures/descriptor.proto", "second")
+	gen, err := protogen.Options{}.New(&pluginpb.CodeGeneratorRequest{
+		FileToGenerate: []string{a.GetName(), b.GetName()},
+		ProtoFile:      []*descriptorpb.FileDescriptorProto{a, b},
+	})
+	if err != nil {
+		t.Fatalf("protogen.Options.New: %v", err)
+	}
+	for _, tt := range []struct {
+		file string
+		want []string
+	}{
+		{a.GetName(), []string{"type CommonFunctions interface {", "type UnimplementedCommonFunctions struct{}", "func RegisterCommonFunctions(eng v2.Engine, impl CommonFunctions) error {"}},
+		{b.GetName(), []string{"type DescriptorFunctions interface {", "type UnimplementedDescriptorFunctions struct{}", "func RegisterDescriptorFunctions(eng v2.Engine, impl DescriptorFunctions) error {"}},
+	} {
+		g := GenerateFile(gen, gen.FilesByPath[tt.file])
+		content, err := g.Content()
+		if err != nil {
+			t.Fatalf("%s: %v", tt.file, err)
+		}
+		alone := generate(t, functionFile(tt.file, map[string]string{a.GetName(): "first", b.GetName(): "second"}[tt.file]))
+		if string(content) != alone {
+			t.Errorf("%s: output depends on the sibling file being in the run", tt.file)
+		}
+		for _, want := range tt.want {
+			if !strings.Contains(string(content), want) {
+				t.Errorf("%s: generated output missing %q", tt.file, want)
+			}
+		}
+	}
+	if got := gen.Response().GetError(); got != "" {
+		t.Errorf("unexpected plugin error: %s", got)
+	}
+}
+
+func TestFunctionStubPrefix(t *testing.T) {
+	for _, tt := range []struct{ path, want string }{
+		{"descriptor.proto", "Descriptor"},
+		{"dir/foo_bar.proto", "FooBar"},
+		{"foo-bar.proto", "Foo_bar"},
+		{"functions.proto", "Functions"},
+		{"01_basic.proto", "X01Basic"},
+		{"_private.proto", "XPrivate"},
+		{"über.proto", "Xüber"},
+	} {
+		fdp := functionFile(tt.path, "fn")
+		gen, err := protogen.Options{}.New(&pluginpb.CodeGeneratorRequest{
+			FileToGenerate: []string{tt.path},
+			ProtoFile:      []*descriptorpb.FileDescriptorProto{fdp},
+		})
+		if err != nil {
+			t.Fatalf("protogen.Options.New: %v", err)
+		}
+		if got := functionStubPrefix(gen.FilesByPath[tt.path]); got != tt.want {
+			t.Errorf("functionStubPrefix(%q) = %q, want %q", tt.path, got, tt.want)
+		}
+		// The stubs must be valid Go for every name, not just the camel-cased ones.
+		if _, err := GenerateFile(gen, gen.FilesByPath[tt.path]).Content(); err != nil {
+			t.Errorf("%s: generated output does not parse: %v", tt.path, err)
+		}
+	}
+}
+
+func TestFunctionStubConflict(t *testing.T) {
+	const a, b = "fixtures/foo_bar.proto", "fixtures/fooBar.proto"
+	for _, tt := range []struct {
+		name      string
+		parameter string
+		files     []*descriptorpb.FileDescriptorProto
+		generate  []string
+		wantErr   []string // substrings; empty means no error
+	}{{
+		name:     "file names camel-case alike",
+		files:    []*descriptorpb.FileDescriptorProto{functionFile(a, "first"), functionFile(b, "second")},
+		generate: []string{a, b},
+		wantErr:  []string{a, b, "example.com/fixtures/sharedpb", "FooBarFunctions"},
+	}, {
+		name:     "imported sibling generated by an earlier run",
+		files:    []*descriptorpb.FileDescriptorProto{functionFile(a, "first"), functionFile(b, "second", a)},
+		generate: []string{b},
+		wantErr:  []string{a, b},
+	}, {
+		name:     "sibling without functions",
+		files:    []*descriptorpb.FileDescriptorProto{functionFile(a, "first"), functionFile(b, "")},
+		generate: []string{a, b},
+	}, {
+		name:      "same import path in different output directories",
+		parameter: "paths=source_relative",
+		files: []*descriptorpb.FileDescriptorProto{
+			functionFile("one/foo_bar.proto", "first"),
+			functionFile("two/fooBar.proto", "second"),
+		},
+		generate: []string{"one/foo_bar.proto", "two/fooBar.proto"},
+	}, {
+		name:      "same directory with source-relative paths",
+		parameter: "paths=source_relative",
+		files:     []*descriptorpb.FileDescriptorProto{functionFile(a, "first"), functionFile(b, "second")},
+		generate:  []string{a, b},
+		wantErr:   []string{a, b},
+	}} {
+		t.Run(tt.name, func(t *testing.T) {
+			gen, err := protogen.Options{}.New(&pluginpb.CodeGeneratorRequest{
+				Parameter:      proto.String(tt.parameter),
+				FileToGenerate: tt.generate,
+				ProtoFile:      tt.files,
+			})
+			if err != nil {
+				t.Fatalf("protogen.Options.New: %v", err)
+			}
+			for _, f := range gen.Files {
+				if f.Generate {
+					GenerateFile(gen, f)
+				}
+			}
+			got := gen.Response().GetError()
+			if len(tt.wantErr) == 0 && got != "" {
+				t.Errorf("unexpected plugin error: %s", got)
+			}
+			if len(tt.wantErr) > 0 && got == "" {
+				t.Error("no plugin error")
+			}
+			for _, want := range tt.wantErr {
+				if !strings.Contains(got, want) {
+					t.Errorf("plugin error missing %q: %s", want, got)
+				}
+			}
+		})
 	}
 }
