@@ -89,7 +89,6 @@ func GenerateFile(gen *protogen.Plugin, file *protogen.File) *protogen.Generated
 }
 
 func generateFiles(gen *protogen.Plugin, file *protogen.File) []*protogen.GeneratedFile {
-	checkFunctionStubConflict(gen, file)
 	f := newFileInfo(file)
 	generated := []*protogen.GeneratedFile{
 		generateOneFile(gen, file, f, ""),
@@ -146,7 +145,6 @@ func generateOneFile(gen *protogen.Plugin, file *protogen.File, f *fileInfo, var
 		genMessage(g, f, message)
 	}
 	genExtensions(g, f)
-	genFunctionStubs(g, f)
 
 	// The descriptor contains a lot of information about the syntax which is
 	// quite different between the proto2/3 version of a file and the equivalent
@@ -294,7 +292,6 @@ func genEnum(g *protogen.GeneratedFile, f *fileInfo, e *enumInfo) {
 	leadingComments := appendDeprecationSuffix(e.Comments.Leading,
 		e.Desc.ParentFile(),
 		e.Desc.Options().(*descriptorpb.EnumOptions).GetDeprecated())
-	leadingComments = appendSchemaAnnotationComments(leadingComments, e.Desc.Options())
 	g.P(leadingComments,
 		"type ", e.GoIdent, " int32")
 
@@ -306,7 +303,6 @@ func genEnum(g *protogen.GeneratedFile, f *fileInfo, e *enumInfo) {
 		leadingComments := appendDeprecationSuffix(value.Comments.Leading,
 			value.Desc.ParentFile(),
 			value.Desc.Options().(*descriptorpb.EnumValueOptions).GetDeprecated())
-		leadingComments = appendSchemaAnnotationComments(leadingComments, value.Desc.Options())
 		g.P(leadingComments,
 			value.GoIdent, " ", e.GoIdent, " = ", value.Desc.Number(),
 			trailingComment(value.Comments.Trailing))
@@ -417,7 +413,6 @@ func genMessage(g *protogen.GeneratedFile, f *fileInfo, m *messageInfo) {
 	leadingComments := appendDeprecationSuffix(m.Comments.Leading,
 		m.Desc.ParentFile(),
 		m.Desc.Options().(*descriptorpb.MessageOptions).GetDeprecated())
-	leadingComments = appendSchemaAnnotationComments(leadingComments, m.Desc.Options())
 	g.P(leadingComments,
 		"type ", m.GoIdent, " struct {")
 	genMessageFields(g, f, m)
@@ -511,7 +506,6 @@ func genMessageField(g *protogen.GeneratedFile, f *fileInfo, m *messageInfo, fie
 	leadingComments := appendDeprecationSuffix(field.Comments.Leading,
 		field.Desc.ParentFile(),
 		field.Desc.Options().(*descriptorpb.FieldOptions).GetDeprecated())
-	leadingComments = appendSchemaAnnotationComments(leadingComments, field.Desc.Options())
 	g.P(leadingComments,
 		name, " ", goType, tags,
 		trailingComment(field.Comments.Trailing))

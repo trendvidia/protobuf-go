@@ -29,7 +29,6 @@ func opaqueGenMessage(g *protogen.GeneratedFile, f *fileInfo, message *messageIn
 	leadingComments := appendDeprecationSuffix(message.Comments.Leading,
 		message.Desc.ParentFile(),
 		message.Desc.Options().(*descriptorpb.MessageOptions).GetDeprecated())
-	leadingComments = appendSchemaAnnotationComments(leadingComments, message.Desc.Options())
 	g.P(leadingComments,
 		"type ", message.GoIdent, " struct {")
 
@@ -132,7 +131,6 @@ func opaqueGenMessageField(g *protogen.GeneratedFile, f *fileInfo, message *mess
 		leadingComments := appendDeprecationSuffix(field.Comments.Leading,
 			field.Desc.ParentFile(),
 			field.Desc.Options().(*descriptorpb.FieldOptions).GetDeprecated())
-		leadingComments = appendSchemaAnnotationComments(leadingComments, field.Desc.Options())
 		g.P(leadingComments,
 			name, " ", goType, tags,
 			trailingComment(field.Comments.Trailing))
@@ -165,7 +163,7 @@ func opaqueGenOneofFields(g *protogen.GeneratedFile, f *fileInfo, message *messa
 		return
 	}
 
-	leadingComments := appendSchemaAnnotationComments(oneof.Comments.Leading, oneof.Desc.Options())
+	leadingComments := oneof.Comments.Leading
 	if leadingComments != "" {
 		leadingComments += "\n"
 	}
@@ -304,7 +302,6 @@ func opaqueGenGet(g *protogen.GeneratedFile, f *fileInfo, message *messageInfo, 
 	leadingComments := appendDeprecationSuffix("",
 		field.Desc.ParentFile(),
 		field.Desc.Options().(*descriptorpb.FieldOptions).GetDeprecated())
-	leadingComments = appendSchemaAnnotationComments(leadingComments, field.Desc.Options())
 	fieldtrackNoInterface(g, message.isTracked)
 	g.AnnotateSymbol(message.GoIdent.GoName+"."+getterName, protogen.Annotation{Location: field.Location})
 
@@ -877,8 +874,8 @@ func opaqueGenMessageBuilder(g *protogen.GeneratedFile, f *fileInfo, message *me
 			tag = "`go:\"track\"`"
 		}
 		if oneof != nil && oneof.Fields[0] == field && !oneof.Desc.IsSynthetic() {
-			if comments := appendSchemaAnnotationComments(oneof.Comments.Leading, oneof.Desc.Options()); comments != "" {
-				g.P(comments)
+			if oneof.Comments.Leading != "" {
+				g.P(oneof.Comments.Leading)
 				g.P()
 			}
 			g.P("// Fields of oneof ", opaqueOneofFieldName(oneof, message.isOpaque()), ":")
