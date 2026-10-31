@@ -104,19 +104,18 @@ for other reasons, as of 2026-10-30:
 |--------------------------------|------------------------------------------------------|---------------------------------------------------------------------|
 | goed                           | Pins protoregistry v0.72.0, which needs the fork     | Upgrade to protoregistry v0.74.0                                    |
 | gameflow                       | No stated reason, and nothing uses a fork-only API   | [gameflow#957](https://github.com/trendvidia/gameflow/pull/957)     |
-| protowire `internal/schemaext` | Test harness that builds this fork's `protoc-gen-go` | [protowire#458](https://github.com/trendvidia/protowire/issues/458) |
 
 A binary that opts in for speed gets added here, with the reason.
 
-### What is leaving
+### What has left
 
-The RFC-001 function stubs and annotation comments in `protoc-gen-go` are here
-only until they move to
-[a separate plugin](https://github.com/trendvidia/protowire/issues/458).
+Two earlier additions are gone. Tags up to `v1.36.12-tv.1` still contain them.
 
-The namespaced registry has already left. It is now the `nsregistry` package in
-[protoregistry](https://github.com/trendvidia/protoregistry), and tags up to
-`v1.36.12-tv.1` still contain the old copy.
+*   The namespaced registry is now the `nsregistry` package in
+    [protoregistry](https://github.com/trendvidia/protoregistry).
+*   RFC-001 function stubs and annotation comments now come from
+    [`protoc-gen-pxf-go`](https://github.com/trendvidia/protowire/tree/main/cmd/protoc-gen-pxf-go),
+    which runs on stock protobuf. `protoc-gen-go` here matches upstream.
 
 ### Version tags
 
