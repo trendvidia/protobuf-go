@@ -84,7 +84,7 @@ effect on the modules that depend on yours, so a library should leave this
 choice to the binary at the top of the tree.
 
 ```
-replace google.golang.org/protobuf => github.com/trendvidia/protobuf-go v1.36.12-tv.1
+replace google.golang.org/protobuf => github.com/trendvidia/protobuf-go v1.36.12-tv.2
 ```
 
 The fork keeps the module path `google.golang.org/protobuf`, so `replace` is
@@ -92,20 +92,13 @@ the only way to reach it. Confirm that it took effect:
 
 ```
 $ go list -m google.golang.org/protobuf
-google.golang.org/protobuf v1.36.12 => github.com/trendvidia/protobuf-go v1.36.12-tv.1
+google.golang.org/protobuf v1.36.12 => github.com/trendvidia/protobuf-go v1.36.12-tv.2
 ```
 
 ### Who opts in
 
-No binary has chosen the fork for its speed yet. These still have a `replace`,
-for other reasons, as of 2026-10-30:
-
-| Module                         | Why it has the `replace`                             | When it goes                                                        |
-|--------------------------------|------------------------------------------------------|---------------------------------------------------------------------|
-| goed                           | Pins protoregistry v0.72.0, which needs the fork     | Upgrade to protoregistry v0.74.0                                    |
-| gameflow                       | No stated reason, and nothing uses a fork-only API   | [gameflow#957](https://github.com/trendvidia/gameflow/pull/957)     |
-
-A binary that opts in for speed gets added here, with the reason.
+No binary opts in as of 2026-10-30. A binary that opts in for speed gets listed
+here, with the reason.
 
 ### What has left
 
