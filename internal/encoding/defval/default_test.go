@@ -103,3 +103,57 @@ func Test(t *testing.T) {
 		})
 	}
 }
+
+func TestUnmarshalNonDecimal(t *testing.T) {
+	V := protoreflect.ValueOf
+	tests := []struct {
+		str  string
+		kind protoreflect.Kind
+		want protoreflect.Value
+	}{
+		{str: "0x10", kind: protoreflect.Int32Kind, want: V(int32(16))},
+		{str: "-0x10", kind: protoreflect.Int32Kind, want: V(int32(-16))},
+		{str: "0x10", kind: protoreflect.Int64Kind, want: V(int64(16))},
+		{str: "-0x10", kind: protoreflect.Int64Kind, want: V(int64(-16))},
+		{str: "0x10", kind: protoreflect.Uint32Kind, want: V(uint32(16))},
+		{str: "0x10", kind: protoreflect.Uint64Kind, want: V(uint64(16))},
+		{str: "020", kind: protoreflect.Int32Kind, want: V(int32(16))},
+		{str: "-020", kind: protoreflect.Int32Kind, want: V(int32(-16))},
+		{str: "020", kind: protoreflect.Int64Kind, want: V(int64(16))},
+		{str: "-020", kind: protoreflect.Int64Kind, want: V(int64(-16))},
+		{str: "020", kind: protoreflect.Uint32Kind, want: V(uint32(16))},
+		{str: "020", kind: protoreflect.Uint64Kind, want: V(uint64(16))},
+		{str: "0x100000000", kind: protoreflect.Int64Kind, want: V(int64(4294967296))},
+		{str: "-0x100000000", kind: protoreflect.Int64Kind, want: V(int64(-4294967296))},
+		{str: "0x100000000", kind: protoreflect.Uint64Kind, want: V(uint64(4294967296))},
+		{str: "040000000000", kind: protoreflect.Int64Kind, want: V(int64(4294967296))},
+		{str: "-040000000000", kind: protoreflect.Int64Kind, want: V(int64(-4294967296))},
+		{str: "040000000000", kind: protoreflect.Uint64Kind, want: V(uint64(4294967296))},
+		// MaxInt32
+		{str: "0x7fffffff", kind: protoreflect.Int32Kind, want: V(int32(2147483647))},
+		{str: "017777777777", kind: protoreflect.Int32Kind, want: V(int32(2147483647))},
+		// MaxInt64
+		{str: "0x7fffffffffffffff", kind: protoreflect.Int64Kind, want: V(int64(9223372036854775807))},
+		{str: "0777777777777777777777", kind: protoreflect.Int64Kind, want: V(int64(9223372036854775807))},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.str+"_"+tt.kind.String(), func(t *testing.T) {
+			gotVal, _, err := defval.Unmarshal(tt.str, tt.kind, nil, defval.Descriptor)
+			if err != nil {
+				t.Fatalf("Unmarshal(%q, %v, Descriptor) failed: %v", tt.str, tt.kind, err)
+			}
+			if !reflect.DeepEqual(gotVal.Interface(), tt.want.Interface()) {
+				t.Errorf("Unmarshal(%q, %v, Descriptor) = %v, want %v", tt.str, tt.kind, gotVal, tt.want)
+			}
+
+			gotVal, _, err = defval.Unmarshal(tt.str, tt.kind, nil, defval.GoTag)
+			if err != nil {
+				t.Fatalf("Unmarshal(%q, %v, GoTag) failed: %v", tt.str, tt.kind, err)
+			}
+			if !reflect.DeepEqual(gotVal.Interface(), tt.want.Interface()) {
+				t.Errorf("Unmarshal(%q, %v, GoTag) = %v, want %v", tt.str, tt.kind, gotVal, tt.want)
+			}
+		})
+	}
+}
