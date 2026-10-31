@@ -84,7 +84,7 @@ effect on the modules that depend on yours, so a library should leave this
 choice to the binary at the top of the tree.
 
 ```
-replace google.golang.org/protobuf => github.com/trendvidia/protobuf-go v1.36.15
+replace google.golang.org/protobuf => github.com/trendvidia/protobuf-go v1.36.12-tv.1
 ```
 
 The fork keeps the module path `google.golang.org/protobuf`, so `replace` is
@@ -92,7 +92,7 @@ the only way to reach it. Confirm that it took effect:
 
 ```
 $ go list -m google.golang.org/protobuf
-google.golang.org/protobuf v1.36.12 => github.com/trendvidia/protobuf-go v1.36.15
+google.golang.org/protobuf v1.36.12 => github.com/trendvidia/protobuf-go v1.36.12-tv.1
 ```
 
 ### Who opts in
@@ -121,7 +121,7 @@ Two other additions are here only until their replacements ship:
 ### Version tags
 
 Tag `v1.36.12` names different code here (`3e10defe`) and upstream
-(`cdd4c5f7`), and `v1.36.13` to `v1.36.15` exist only here. New tags carry a suffix, such as `v1.36.12-tv.1`, so
+(`cdd4c5f7`), and `v1.36.13` to `v1.36.15` exist only here. New tags carry a suffix, starting with `v1.36.12-tv.1`, so
 `go.mod` shows that a build uses the fork. Existing tags stay because they are
 in use.
 
