@@ -100,23 +100,23 @@ google.golang.org/protobuf v1.36.12 => github.com/trendvidia/protobuf-go v1.36.1
 No binary has chosen the fork for its speed yet. These still have a `replace`,
 for other reasons, as of 2026-10-30:
 
-| Module                         | Why it has the `replace`                                        | When it goes                                                              |
-|--------------------------------|-----------------------------------------------------------------|---------------------------------------------------------------------------|
-| protolsp                       | Uses the namespaced registry directly                           | [protoregistry#44](https://github.com/trendvidia/protoregistry/issues/44) |
-| golias, goed                   | Use `protoregistry/client`, which needs the namespaced registry | [protoregistry#44](https://github.com/trendvidia/protoregistry/issues/44) |
-| gameflow                       | No stated reason, and nothing uses a fork-only API              | [gameflow#957](https://github.com/trendvidia/gameflow/pull/957)           |
-| protowire `internal/schemaext` | Test harness that builds this fork's `protoc-gen-go`            | [protowire#458](https://github.com/trendvidia/protowire/issues/458)       |
+| Module                         | Why it has the `replace`                             | When it goes                                                        |
+|--------------------------------|------------------------------------------------------|---------------------------------------------------------------------|
+| goed                           | Pins protoregistry v0.72.0, which needs the fork     | Upgrade to protoregistry v0.74.0                                    |
+| gameflow                       | No stated reason, and nothing uses a fork-only API   | [gameflow#957](https://github.com/trendvidia/gameflow/pull/957)     |
+| protowire `internal/schemaext` | Test harness that builds this fork's `protoc-gen-go` | [protowire#458](https://github.com/trendvidia/protowire/issues/458) |
 
 A binary that opts in for speed gets added here, with the reason.
 
 ### What is leaving
 
-Two other additions are here only until their replacements ship:
+The RFC-001 function stubs and annotation comments in `protoc-gen-go` are here
+only until they move to
+[a separate plugin](https://github.com/trendvidia/protowire/issues/458).
 
-*   The namespaced registry, `reflect/protoregistry/namespace.go`, moves to
-    [protoregistry](https://github.com/trendvidia/protoregistry/issues/44).
-*   The RFC-001 function stubs and annotation comments in `protoc-gen-go` move
-    to [a separate plugin](https://github.com/trendvidia/protowire/issues/458).
+The namespaced registry has already left. It is now the `nsregistry` package in
+[protoregistry](https://github.com/trendvidia/protoregistry), and tags up to
+`v1.36.12-tv.1` still contain the old copy.
 
 ### Version tags
 
