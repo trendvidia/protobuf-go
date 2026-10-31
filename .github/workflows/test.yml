@@ -28,6 +28,6 @@ jobs:
         key: ${{ runner.os }}-${{ hashFiles('integration_test.go') }}
     - name: Test
       env:
-        # Protobuf 30 does not yet support anything newer than Bazel 7
-        USE_BAZEL_VERSION: 7.x
+        # Protobuf 35 requires at least Bazel 8
+        USE_BAZEL_VERSION: 8.x
       run: go test -run='^TestIntegration$' -v -timeout=60m -count=1 -failfast "$@"
